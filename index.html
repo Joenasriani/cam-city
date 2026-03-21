@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Signal Cities — Live Stream Puzzle</title>
+  <style>
+    :root {
+      --bg: #060816;
+      --bg-panel: rgba(10, 14, 33, 0.82);
+      --line: rgba(132, 162, 255, 0.22);
+      --text: #eff4ff;
+      --muted: #9fb0d9;
+      --accent: #6be8ff;
+      --accent-2: #8cff91;
+      --warn: #ffd36b;
+      --danger: #ff7f93;
+      --shadow: 0 18px 60px rgba(0, 0, 0, 0.42);
+      --radius: 20px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top, rgba(41, 78, 196, 0.28), transparent 34%),
+        linear-gradient(180deg, #050813 0%, #060816 42%, #02040c 100%);
+      color: var(--text);
+    }
+
+    #scene {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+    }
+
+    .hud {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .topbar {
+      position: absolute;
+      top: 18px;
+      left: 18px;
+      right: 18px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: flex-start;
+      justify-content: space-between;
+      pointer-events: none;
+    }
+
+    .brand,
+    .stats,
+    .panel,
+    .toast,
+    .mini {
+      background: var(--bg-panel);
+      border: 1px solid var(--line);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      box-shadow: var(--shadow);
+    }
+
+    .brand {
+      max-width: min(520px, calc(100vw - 36px));
+      padding: 16px 18px;
+      border-radius: 22px;
+      pointer-events: auto;
+    }
+
+    .brand h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.05rem, 2vw, 1.4rem);
+      letter-spacing: 0.02em;
+    }
+
+    .brand p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.93rem;
+      line-height: 1.5;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(120px, 1fr));
+      gap: 10px;
+      padding: 12px;
+      border-radius: 18px;
+      min-width: min(430px, 100%);
+      pointer-events: auto;
+    }
+
+    .stat {
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .label {
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.11em;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .value {
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .panel {
+      position: absolute;
+      right: 18px;
+      bottom: 18px;
+      width: min(420px, calc(100vw - 36px));
+      max-height: min(72vh, 760px);
+      overflow: auto;
+      border-radius: var(--radius);
+      padding: 16px;
+      pointer-events: auto;
+    }
+
+    .panel h2 {
+      margin: 0 0 8px;
+      font-size: 1.05rem;
+    }
+
+    .panel .help {
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.45;
+    }
+
+    .feed-card {
+      padding: 14px;
+      margin-bottom: 12px;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+    }
+
+    .feed-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .feed-name {
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .badge {
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.05);
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .badge.live { color: var(--accent-2); }
+    .badge.demo { color: var(--warn); }
+    .badge.error { color: var(--danger); }
+
+    .feed-meta {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .mini {
+      border-radius: 14px;
+      padding: 10px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      box-shadow: none;
+    }
+
+    .mini .value {
+      font-size: 1rem;
+    }
+
+    .controls-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+    }
+
+    button {
+      appearance: none;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px;
+      padding: 11px 12px;
+      background: linear-gradient(180deg, rgba(107,232,255,0.16), rgba(107,232,255,0.05));
+      color: var(--text);
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      border-color: rgba(107,232,255,0.5);
+    }
+
+    button:active {
+      transform: translateY(1px) scale(0.99);
+    }
+
+    .toast {
+      position: absolute;
+      left: 18px;
+      bottom: 18px;
+      max-width: min(420px, calc(100vw - 36px));
+      border-radius: 18px;
+      padding: 14px 16px;
+      pointer-events: auto;
+    }
+
+    .toast strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 0.95rem;
+    }
+
+    .toast p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 840px) {
+      .topbar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .stats {
+        min-width: 0;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .panel {
+        width: calc(100vw - 24px);
+        right: 12px;
+        bottom: 12px;
+        padding: 14px;
+      }
+
+      .toast {
+        left: 12px;
+        bottom: calc(12px + min(52vh, 420px));
+      }
+    }
+
+    @media (max-width: 560px) {
+      .brand,
+      .panel,
+      .toast {
+        border-radius: 18px;
+      }
+
+      .stats {
+        grid-template-columns: 1fr;
+      }
+
+      .feed-meta,
+      .controls-row {
+        grid-template-columns: 1fr;
+      }
+
+      .toast {
+        right: 12px;
+        max-width: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+
+  <div class="hud">
+    <div class="topbar">
+      <section class="brand">
+        <h1>Cam City — Live Signal Room</h1>
+        <p>
+          Route live city feeds through a high-tech relay chamber. Read each feed’s signal level,
+          rotate the relay dials, and synchronize all cities before the clock runs out.
+        </p>
+      </section>
+
+      <section class="stats" aria-label="Game stats">
+        <div class="stat">
+          <div class="label">Stage</div>
+          <div class="value" id="stageValue">1</div>
+        </div>
+        <div class="stat">
+          <div class="label">Solved</div>
+          <div class="value" id="solvedValue">0 / 3</div>
+        </div>
+        <div class="stat">
+          <div class="label">Time</div>
+          <div class="value" id="timeValue">90s</div>
+        </div>
+      </section>
+    </div>
+
+    <aside class="panel" aria-label="Feed controls">
+      <h2>Relay Controls</h2>
+      <p class="help">
+        Each city stream creates a live signal value from 0 to 7. Match the dial to the live value.
+        When all three are aligned at once, the chamber locks the routes and the round is solved.
+      </p>
+      <div id="feedCards"></div>
+    </aside>
+
+    <section class="toast" aria-live="polite">
+      <strong id="toastTitle">Ready</strong>
+      <p id="toastBody">Load your own HLS, MP4, or WHEP streams by editing the feed source manifest in the file.</p>
+    </section>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'https://unpkg.com/three@0.165.0/build/three.module.js';
+    import { OrbitControls } from 'https://unpkg.com/three@0.165.0/examples/jsm/controls/OrbitControls.js';
+    import { GLTFLoader } from 'https://unpkg.com/three@0.165.0/examples/jsm/loaders/GLTFLoader.js';
+    import Hls from 'https://cdn.jsdelivr.net/npm/hls.js@latest/+esm';
+
+    const FEED_SOURCES = [
+      {
+        id: 'dubai',
+        name: 'Dubai Marina',
+        type: 'mp4',
+        url: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
+        demo: true,
+      },
+      {
+        id: 'tokyo',
+        name: 'Tokyo Crossing',
+        type: 'mp4',
+        url: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.webm',
+        demo: true,
+      },
+      {
+        id: 'newyork',
+        name: 'New York Skyline',
+        type: 'mp4',
+        url: 'https://media.w3.org/2010/05/sintel/trailer.mp4',
+        demo: true,
+      }
+    ];
+
+    const REMOTE_MODEL_MANIFEST = [
+      // Example:
+      // { url: 'https://your-cdn.com/models/robot-guide.glb', position: [0, -0.2, -1.2], scale: 0.8 }
+    ];
+
+    const state = {
+      stage: 1,
+      solvedCount: 0,
+      timeLeft: 90,
+      feeds: [],
+      solvedRound: false,
+    };
+
+    const stageValue = document.getElementById('stageValue');
+    const solvedValue = document.getElementById('solvedValue');
+    const timeValue = document.getElementById('timeValue');
+    const toastTitle = document.getElementById('toastTitle');
+    const toastBody = document.getElementById('toastBody');
+    const feedCards = document.getElementById('feedCards');
+
+    function setToast(title, body) {
+      toastTitle.textContent = title;
+      toastBody.textContent = body;
+    }
+
+    function clampWrap(value, max) {
+      return ((value % max) + max) % max;
+    }
+
+    function updateHud() {
+      stageValue.textContent = String(state.stage);
+      const solved = state.feeds.filter(f => f.userValue === f.liveValue).length;
+      solvedValue.textContent = `${solved} / ${state.feeds.length}`;
+      timeValue.textContent = `${Math.max(0, Math.ceil(state.timeLeft))}s`;
+    }
+
+    function makeHiddenVideo() {
+      const video = document.createElement('video');
+      video.crossOrigin = 'anonymous';
+      video.muted = true;
+      video.loop = true;
+      video.playsInline = true;
+      video.autoplay = true;
+      video.setAttribute('webkit-playsinline', 'true');
+      video.style.position = 'fixed';
+      video.style.width = '1px';
+      video.style.height = '1px';
+      video.style.left = '-9999px';
+      video.style.top = '-9999px';
+      document.body.appendChild(video);
+      return video;
+    }
+
+    async function attachFeedSource(video, source) {
+      if (source.type === 'hls') {
+        if (video.canPlayType('application/vnd.apple.mpegurl')) {
+          video.src = source.url;
+        } else if (Hls.isSupported()) {
+          const hls = new Hls({ enableWorker: true, lowLatencyMode: true });
+          hls.loadSource(source.url);
+          hls.attachMedia(video);
+          source._hls = hls;
+        } else {
+          throw new Error('HLS not supported in this browser');
+        }
+      } else if (source.type === 'mp4') {
+        video.src = source.url;
+      } else if (source.type === 'whep') {
+        throw new Error('WHEP adapter stub included. Replace with your signaling gateway implementation.');
+      } else {
+        throw new Error(`Unsupported feed type: ${source.type}`);
+      }
+
+      await video.play().catch(() => {
+        setToast('Interaction needed', 'Tap any rotate button once to unlock autoplay on some mobile browsers.');
+      });
+    }
+
+    function createFeedCard(feed) {
+      const card = document.createElement('div');
+      card.className = 'feed-card';
+      card.innerHTML = `
+        <div class="feed-head">
+          <div class="feed-name">${feed.name}</div>
+          <div class="badge ${feed.statusClass}">${feed.statusText}</div>
+        </div>
+        <div class="feed-meta">
+          <div class="mini"><div class="label">Live Signal</div><div class="value" data-role="live">0</div></div>
+          <div class="mini"><div class="label">Dial</div><div class="value" data-role="user">0</div></div>
+          <div class="mini"><div class="label">State</div><div class="value" data-role="match">Idle</div></div>
+        </div>
+        <div class="controls-row">
+          <button data-action="left">Rotate -</button>
+          <button data-action="sync">Auto Sync</button>
+          <button data-action="right">Rotate +</button>
+        </div>
+      `;
+
+      const liveEl = card.querySelector('[data-role="live"]');
+      const userEl = card.querySelector('[data-role="user"]');
+      const matchEl = card.querySelector('[data-role="match"]');
+
+      function render() {
+        liveEl.textContent = String(feed.liveValue);
+        userEl.textContent = String(feed.userValue);
+        const matched = feed.liveValue === feed.userValue;
+        matchEl.textContent = matched ? 'Locked' : 'Adjust';
+        matchEl.style.color = matched ? 'var(--accent-2)' : 'var(--warn)';
+      }
+
+      card.querySelector('[data-action="left"]').addEventListener('click', () => {
+        feed.userValue = clampWrap(feed.userValue - 1, 8);
+        animateDial(feed, -1);
+        render();
+        checkRound();
+      });
+
+      card.querySelector('[data-action="right"]').addEventListener('click', () => {
+        feed.userValue = clampWrap(feed.userValue + 1, 8);
+        animateDial(feed, 1);
+        render();
+        checkRound();
+      });
+
+      card.querySelector('[data-action="sync"]').addEventListener('click', () => {
+        const delta = feed.liveValue - feed.userValue;
+        feed.userValue = feed.liveValue;
+        animateDial(feed, delta);
+        render();
+        checkRound();
+      });
+
+      feed.renderCard = render;
+      render();
+      feedCards.appendChild(card);
+    }
+
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x050813, 0.08);
+
+    const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, 2.8, 7.6);
+
+    const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('scene'), antialias: true, alpha: false });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enablePan = false;
+    controls.enableDamping = true;
+    controls.minDistance = 4.8;
+    controls.maxDistance = 10;
+    controls.target.set(0, 1.3, 0);
+
+    const hemi = new THREE.HemisphereLight(0x8cb8ff, 0x10131d, 1.4);
+    scene.add(hemi);
+
+    const dir = new THREE.DirectionalLight(0xffffff, 1.5);
+    dir.position.set(3.2, 4.2, 2.8);
+    scene.add(dir);
+
+    const room = new THREE.Group();
+    scene.add(room);
+
+    const floor = new THREE.Mesh(
+      new THREE.CylinderGeometry(5.7, 6.4, 0.5, 48),
+      new THREE.MeshStandardMaterial({
+        color: 0x0f1730,
+        metalness: 0.75,
+        roughness: 0.35,
+        emissive: 0x07101f,
+        emissiveIntensity: 0.5,
+      })
+    );
+    floor.position.y = -0.45;
+    room.add(floor);
+
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(4.5, 0.08, 24, 160),
+      new THREE.MeshStandardMaterial({ color: 0x5fe3ff, emissive: 0x39d7ff, emissiveIntensity: 1.2 })
+    );
+    ring.rotation.x = Math.PI / 2;
+    ring.position.y = -0.15;
+    room.add(ring);
+
+    const towers = [];
+
+    function buildTower(index, x) {
+      const group = new THREE.Group();
+      group.position.set(x, 0, 0);
+
+      const base = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.58, 0.78, 1.45, 32),
+        new THREE.MeshStandardMaterial({ color: 0x18233f, metalness: 0.82, roughness: 0.26 })
+      );
+      base.position.y = 0.3;
+      group.add(base);
+
+      const dial = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.45, 0.45, 0.18, 40),
+        new THREE.MeshStandardMaterial({ color: 0x7ef0ff, emissive: 0x4ce0ff, emissiveIntensity: 1.1, metalness: 0.6, roughness: 0.18 })
+      );
+      dial.rotation.z = Math.PI / 2;
+      dial.position.set(0, 1.12, 0);
+      group.add(dial);
+
+      const marker = new THREE.Mesh(
+        new THREE.BoxGeometry(0.06, 0.28, 0.06),
+        new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xb8f6ff, emissiveIntensity: 0.9 })
+      );
+      marker.position.set(0.33, 0, 0);
+      dial.add(marker);
+
+      const screenFrame = new THREE.Mesh(
+        new THREE.RoundedBoxGeometry(1.65, 1.04, 0.14, 6, 0.08),
+        new THREE.MeshStandardMaterial({ color: 0x11192d, metalness: 0.66, roughness: 0.25 })
+      );
+      screenFrame.position.set(0, 2.08, 0);
+      group.add(screenFrame);
+
+      const screen = new THREE.Mesh(
+        new THREE.PlaneGeometry(1.44, 0.84),
+        new THREE.MeshBasicMaterial({ color: 0x0a0a0a })
+      );
+      screen.position.set(0, 2.08, 0.076);
+      group.add(screen);
+
+      const labelCanvas = document.createElement('canvas');
+      labelCanvas.width = 512;
+      labelCanvas.height = 128;
+      const ctx = labelCanvas.getContext('2d');
+      ctx.clearRect(0, 0, labelCanvas.width, labelCanvas.height);
+      ctx.fillStyle = '#dfe9ff';
+      ctx.font = '700 46px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(FEED_SOURCES[index].name, labelCanvas.width / 2, 78);
+      const labelTexture = new THREE.CanvasTexture(labelCanvas);
+      const label = new THREE.Mesh(
+        new THREE.PlaneGeometry(1.52, 0.22),
+        new THREE.MeshBasicMaterial({ map: labelTexture, transparent: true })
+      );
+      label.position.set(0, 1.34, 0.08);
+      group.add(label);
+
+      room.add(group);
+      towers.push({ group, dial, screen });
+      return { group, dial, screen };
+    }
+
+    buildTower(0, -3.1);
+    buildTower(1, 0);
+    buildTower(2, 3.1);
+
+    const cableMaterial = new THREE.MeshStandardMaterial({ color: 0x244d92, emissive: 0x17335d, emissiveIntensity: 0.8, metalness: 0.7, roughness: 0.28 });
+    [-1.55, 1.55].forEach((x) => {
+      const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3.15, 18), cableMaterial);
+      cable.rotation.z = Math.PI / 2;
+      cable.position.set(x, 0.72, 0);
+      room.add(cable);
+    });
+
+    const core = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(0.72, 1),
+      new THREE.MeshStandardMaterial({ color: 0x84edff, emissive: 0x51e2ff, emissiveIntensity: 1.35, metalness: 0.45, roughness: 0.1 })
+    );
+    core.position.set(0, 1.08, -1.35);
+    room.add(core);
+
+    const loader = new GLTFLoader();
+    REMOTE_MODEL_MANIFEST.forEach((entry) => {
+      loader.load(entry.url, (gltf) => {
+        const obj = gltf.scene;
+        obj.position.fromArray(entry.position || [0, 0, 0]);
+        const s = entry.scale || 1;
+        obj.scale.setScalar(s);
+        room.add(obj);
+      }, undefined, (err) => {
+        console.warn('Model load failed', entry.url, err);
+      });
+    });
+
+    function animateDial(feed, delta) {
+      if (!feed.tower) return;
+      feed.tower.dial.rotation.x += (-Math.PI * 0.25) * delta;
+    }
+
+    function computeLiveSignal(feed) {
+      if (!feed.analyzerCtx || !feed.video.videoWidth || !feed.video.videoHeight) return feed.liveValue;
+      const { ctx, canvas } = feed.analyzerCtx;
+      const sampleW = canvas.width;
+      const sampleH = canvas.height;
+      ctx.drawImage(feed.video, 0, 0, sampleW, sampleH);
+      const { data } = ctx.getImageData(0, 0, sampleW, sampleH);
+      let total = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        total += data[i] * 0.2126 + data[i + 1] * 0.7152 + data[i + 2] * 0.0722;
+      }
+      const avg = total / (data.length / 4) / 255;
+      return Math.max(0, Math.min(7, Math.floor(avg * 8)));
+    }
+
+    function checkRound() {
+      updateHud();
+      const allMatched = state.feeds.length > 0 && state.feeds.every(feed => feed.liveValue === feed.userValue);
+      if (allMatched && !state.solvedRound) {
+        state.solvedRound = true;
+        setToast('Round solved', 'All live routes are synchronized. Preparing the next stage.');
+        state.solvedCount += 1;
+        setTimeout(nextStage, 1600);
+      }
+    }
+
+    function nextStage() {
+      state.stage += 1;
+      state.timeLeft = Math.max(45, 92 - state.stage * 4);
+      state.solvedRound = false;
+      state.feeds.forEach(feed => {
+        feed.userValue = Math.floor(Math.random() * 8);
+        if (feed.renderCard) feed.renderCard();
+      });
+      setToast('Stage up', `Stage ${state.stage} started. Signals will drift faster now.`);
+      updateHud();
+    }
+
+    async function setupFeeds() {
+      for (let i = 0; i < FEED_SOURCES.length; i++) {
+        const source = FEED_SOURCES[i];
+        const video = makeHiddenVideo();
+        const analyzerCanvas = document.createElement('canvas');
+        analyzerCanvas.width = 32;
+        analyzerCanvas.height = 18;
+        const analyzerCtx = analyzerCanvas.getContext('2d', { willReadFrequently: true });
+
+        const feed = {
+          id: source.id,
+          name: source.name,
+          source,
+          video,
+          liveValue: 0,
+          userValue: Math.floor(Math.random() * 8),
+          analyzerCtx: { canvas: analyzerCanvas, ctx: analyzerCtx },
+          tower: towers[i],
+          statusClass: source.demo ? 'demo' : 'live',
+          statusText: source.demo ? 'Demo Feed' : 'Live Feed',
+        };
+
+        try {
+          await attachFeedSource(video, source);
+          const texture = new THREE.VideoTexture(video);
+          texture.colorSpace = THREE.SRGBColorSpace;
+          texture.minFilter = THREE.LinearFilter;
+          texture.magFilter = THREE.LinearFilter;
+          texture.generateMipmaps = false;
+          feed.tower.screen.material = new THREE.MeshBasicMaterial({ map: texture, toneMapped: false });
+        } catch (error) {
+          console.warn(error);
+          feed.statusClass = 'error';
+          feed.statusText = 'Feed Error';
+          feed.tower.screen.material = new THREE.MeshBasicMaterial({ color: 0x2b0f18 });
+          setToast('Feed warning', `${source.name}: ${error.message}`);
+        }
+
+        state.feeds.push(feed);
+        createFeedCard(feed);
+      }
+
+      updateHud();
+    }
+
+    const clock = new THREE.Clock();
+    let signalTimer = 0;
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = clock.getDelta();
+      signalTimer += dt;
+      state.timeLeft -= dt;
+
+      core.rotation.y += dt * 0.75;
+      core.rotation.x += dt * 0.2;
+      ring.rotation.z += dt * 0.35;
+      room.rotation.y = Math.sin(clock.elapsedTime * 0.18) * 0.06;
+
+      if (signalTimer > Math.max(0.4, 1.2 - state.stage * 0.06)) {
+        signalTimer = 0;
+        state.feeds.forEach(feed => {
+          const nextValue = computeLiveSignal(feed);
+          feed.liveValue = nextValue;
+          if (feed.renderCard) feed.renderCard();
+        });
+        checkRound();
+      }
+
+      if (state.timeLeft <= 0 && !state.solvedRound) {
+        state.timeLeft = 0;
+        state.solvedRound = true;
+        setToast('Time over', 'The live routes drifted out of sync. Reload to try again or continue editing the stage logic.');
+      }
+
+      controls.update();
+      updateHud();
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    setupFeeds();
+    animate();
+  </script>
+</body>
+</html>
