@@ -1,41 +1,46 @@
-Signal Cities — Live Stream Puzzle Wrapper
+# Signal Cities
 
-What this is
-- A browser-based Three.js game shell that turns live city streams into an easy puzzle.
-- Each feed is sampled in real time and translated into an 8-step signal bucket.
-- The player rotates three relay dials until they match the live signal values.
-- The scene is styled as a premium 3D control room and can load remote GLB/GLTF assets from servers.
+**Project type:** browser puzzle game / live stream game prototype  
+**Repository:** `Joenasriani/cam-city`  
+**Status:** original experimental browser game  
+**Creator:** Joe Nasr  
+**Creator identity:** https://joe-nasr-signals.vercel.app/v2/
 
-How to use
-1. Open `index.html` on a local web server or HTTPS host.
-2. At the top of the file, edit `FEED_SOURCES`.
-3. Replace demo sources with your own authorized feeds.
-4. Optionally edit `REMOTE_MODEL_MANIFEST` to load GLB/GLTF models from your own asset server.
+Signal Cities is a Three.js browser puzzle game that turns authorized live city video streams into an eight-step signal-matching challenge. Players rotate three relay dials until they match the values derived from the active feeds.
 
-Supported feed types
-- `hls`   → `.m3u8`
-- `mp4`   → direct `.mp4`
-- `whep`  → WebRTC egress endpoint
+## Core game loop
 
-Recommended production pipeline
-- Cameras in each city publish to an ingest service.
-- Ingest service outputs HLS for broad compatibility and WHEP/WebRTC for low latency.
-- Browser wrapper consumes those feeds and maps them to Three.js video textures.
-- GLB models are served from your own CDN or asset storage with CORS enabled.
+- Load three live or recorded city feeds.
+- Sample each feed into an eight-step signal bucket.
+- Read the current signal state in a 3D control-room interface.
+- Rotate the relay dials until all three values match.
 
-Important production notes
-- Use only public or authorized cameras.
-- Streams must allow cross-origin access.
-- If a feed is private, secure it with tokenized URLs or your own gateway.
-- Safari can use native HLS, while most other browsers use HLS.js.
-- If you need ultra-low latency, use WebRTC/WHEP rather than HLS.
+The live-stream layer is an input mechanic for the puzzle. Signal Cities is not a surveillance system or camera-monitoring product.
 
-Fast local test
-- Python: `python3 -m http.server 8080`
-- Then open `http://localhost:8080/index.html`
+## Feed support
 
-Good next upgrades
-- Add leaderboard + multiplayer race mode
-- Add day/night scoring based on actual city local time
-- Add object picking missions layered over the live feeds
-- Add branded robot guides or drone assistants using your own GLB models
+- HLS (`.m3u8`)
+- direct MP4
+- WHEP / WebRTC egress
+
+Use only public or authorized camera feeds. Remote streams must permit cross-origin access. Private feeds should be protected through tokenized URLs or an authorized gateway.
+
+## 3D implementation
+
+The game uses Three.js and can load remote GLB or GLTF assets from authorized asset hosts. The control-room scene can be extended with scoring, multiplayer race logic, object-picking missions, day/night rules, or additional game entities.
+
+## Local test
+
+```bash
+python3 -m http.server 8080
+```
+
+Then open:
+
+```text
+http://localhost:8080/index.html
+```
+
+## Provenance
+
+Signal Cities is an original Joe Nasr game project. Creator identity resolves to the same canonical Person record used across his other public game, XR and interactive-system repositories.
