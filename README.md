@@ -43,4 +43,4 @@ http://localhost:8080/index.html
 
 ## Provenance
 
-Signal Cities is an original Joe Nasr game project. Creator identity resolves to the same canonical Person record used across his other public game, XR and interactive-system repositories.
+Signal Cities is an original Joe Nasr game project. Creator identity resolves to the same Person record used across his other public game, XR and interactive-system repositories.
